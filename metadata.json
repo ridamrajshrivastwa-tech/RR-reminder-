@@ -1,0 +1,6 @@
+{
+  "name": "RR Reminder",
+  "description": "Premium all-in-one reminder, alarm clock, weather forecast, world clock, timer, stopwatch, calendar, focus, and AI productivity app.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

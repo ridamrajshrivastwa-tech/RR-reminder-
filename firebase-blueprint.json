@@ -1,0 +1,150 @@
+{
+  "entities": {
+    "CloudReminder": {
+      "title": "CloudReminder",
+      "description": "Cloud backup representation of a user reminder.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID" },
+        "title": { "type": "string", "description": "Reminder title" },
+        "description": { "type": "string", "description": "Optional reminder notes" },
+        "triggerAtMillis": { "type": "integer", "description": "Scheduled UTC epoch milliseconds" },
+        "repeatInterval": {
+          "type": "string",
+          "enum": ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY", "CUSTOM"]
+        },
+        "customRepeatDays": { "type": "integer", "description": "Custom interval in days" },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"]
+        },
+        "category": { "type": "string", "description": "Category label" },
+        "colorHex": { "type": "integer", "description": "ARGB color integer" },
+        "completed": { "type": "boolean", "description": "Completion state" },
+        "archived": { "type": "boolean", "description": "Archive state" },
+        "snoozedUntilMillis": { "type": "integer", "description": "Snooze target millis or 0" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId",
+        "title",
+        "description",
+        "triggerAtMillis",
+        "repeatInterval",
+        "customRepeatDays",
+        "priority",
+        "category",
+        "colorHex",
+        "completed",
+        "archived",
+        "snoozedUntilMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CloudAlarm": {
+      "title": "CloudAlarm",
+      "description": "Cloud backup representation of a user alarm.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "label": { "type": "string" },
+        "hour": { "type": "integer" },
+        "minute": { "type": "integer" },
+        "enabled": { "type": "boolean" },
+        "vibrate": { "type": "boolean" },
+        "gradualVolume": { "type": "boolean" },
+        "snoozeMinutes": { "type": "integer" },
+        "toneName": { "type": "string" },
+        "weekdaysCsv": { "type": "string" },
+        "bedtimeAlarm": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "label",
+        "hour",
+        "minute",
+        "enabled",
+        "vibrate",
+        "gradualVolume",
+        "snoozeMinutes",
+        "toneName",
+        "weekdaysCsv",
+        "bedtimeAlarm",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CloudEvent": {
+      "title": "CloudEvent",
+      "description": "Cloud backup representation of a calendar event.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "notes": { "type": "string" },
+        "dateEpochDay": { "type": "integer" },
+        "startMinutes": { "type": "integer" },
+        "endMinutes": { "type": "integer" },
+        "colorHex": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "title",
+        "notes",
+        "dateEpochDay",
+        "startMinutes",
+        "endMinutes",
+        "colorHex",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BackupRecord": {
+      "title": "BackupRecord",
+      "description": "Audit log of a user's cloud backup or restore operation.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "reminderCount": { "type": "integer" },
+        "alarmCount": { "type": "integer" },
+        "eventCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["SUCCESS", "RESTORED"] },
+        "deviceLabel": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "reminderCount",
+        "alarmCount",
+        "eventCount",
+        "status",
+        "deviceLabel",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/CloudReminder" },
+      "description": "User-owned cloud backup of reminders"
+    },
+    "/users/{userId}/alarms/{alarmId}": {
+      "schema": { "$ref": "#/entities/CloudAlarm" },
+      "description": "User-owned cloud backup of alarms"
+    },
+    "/users/{userId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/CloudEvent" },
+      "description": "User-owned cloud backup of calendar events"
+    },
+    "/users/{userId}/backup_history/{backupId}": {
+      "schema": { "$ref": "#/entities/BackupRecord" },
+      "description": "User-owned cloud backup history entries"
+    }
+  }
+}

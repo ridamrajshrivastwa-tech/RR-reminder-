@@ -1,0 +1,188 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidReminder(data, userId) {
+      return data.userId == userId &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.description is string && data.description.size() <= 1000 &&
+        data.triggerAtMillis is int && data.triggerAtMillis > 0 &&
+        data.repeatInterval in ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'CUSTOM'] &&
+        data.customRepeatDays is int && data.customRepeatDays >= 0 && data.customRepeatDays <= 3650 &&
+        data.priority in ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+        data.colorHex is int &&
+        data.completed is bool &&
+        data.archived is bool &&
+        data.snoozedUntilMillis is int && data.snoozedUntilMillis >= 0 &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAlarm(data, userId) {
+      return data.userId == userId &&
+        data.label is string && data.label.size() <= 80 &&
+        data.hour is int && data.hour >= 0 && data.hour <= 23 &&
+        data.minute is int && data.minute >= 0 && data.minute <= 59 &&
+        data.enabled is bool &&
+        data.vibrate is bool &&
+        data.gradualVolume is bool &&
+        data.snoozeMinutes is int && data.snoozeMinutes >= 1 && data.snoozeMinutes <= 60 &&
+        data.toneName is string && data.toneName.size() >= 1 && data.toneName.size() <= 60 &&
+        data.weekdaysCsv is string && data.weekdaysCsv.size() <= 30 &&
+        data.bedtimeAlarm is bool &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidEvent(data, userId) {
+      return data.userId == userId &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.notes is string && data.notes.size() <= 1000 &&
+        data.dateEpochDay is int &&
+        data.startMinutes is int && data.startMinutes >= 0 && data.startMinutes <= 1439 &&
+        data.endMinutes is int && data.endMinutes >= 0 && data.endMinutes <= 1439 &&
+        data.colorHex is int &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBackupRecord(data, userId) {
+      return data.userId == userId &&
+        data.reminderCount is int && data.reminderCount >= 0 && data.reminderCount <= 10000 &&
+        data.alarmCount is int && data.alarmCount >= 0 && data.alarmCount <= 10000 &&
+        data.eventCount is int && data.eventCount >= 0 && data.eventCount <= 10000 &&
+        data.status in ['SUCCESS', 'RESTORED'] &&
+        data.deviceLabel is string && data.deviceLabel.size() >= 1 && data.deviceLabel.size() <= 80 &&
+        data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      match /reminders/{reminderId} {
+        allow get: if isOwner(userId) && isValidId(reminderId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidId(reminderId) &&
+          incoming().keys().hasAll([
+            'userId', 'title', 'description', 'triggerAtMillis', 'repeatInterval',
+            'customRepeatDays', 'priority', 'category', 'colorHex', 'completed',
+            'archived', 'snoozedUntilMillis', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'userId', 'title', 'description', 'triggerAtMillis', 'repeatInterval',
+            'customRepeatDays', 'priority', 'category', 'colorHex', 'completed',
+            'archived', 'snoozedUntilMillis', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidReminder(incoming(), userId);
+        allow update: if isOwner(userId) &&
+          isValidId(reminderId) &&
+          isValidReminder(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'triggerAtMillis', 'repeatInterval',
+            'customRepeatDays', 'priority', 'category', 'colorHex', 'completed',
+            'archived', 'snoozedUntilMillis', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(reminderId);
+      }
+
+      match /alarms/{alarmId} {
+        allow get: if isOwner(userId) && isValidId(alarmId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidId(alarmId) &&
+          incoming().keys().hasAll([
+            'userId', 'label', 'hour', 'minute', 'enabled', 'vibrate',
+            'gradualVolume', 'snoozeMinutes', 'toneName', 'weekdaysCsv',
+            'bedtimeAlarm', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'userId', 'label', 'hour', 'minute', 'enabled', 'vibrate',
+            'gradualVolume', 'snoozeMinutes', 'toneName', 'weekdaysCsv',
+            'bedtimeAlarm', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidAlarm(incoming(), userId);
+        allow update: if isOwner(userId) &&
+          isValidId(alarmId) &&
+          isValidAlarm(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'label', 'hour', 'minute', 'enabled', 'vibrate',
+            'gradualVolume', 'snoozeMinutes', 'toneName', 'weekdaysCsv',
+            'bedtimeAlarm', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(alarmId);
+      }
+
+      match /events/{eventId} {
+        allow get: if isOwner(userId) && isValidId(eventId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidId(eventId) &&
+          incoming().keys().hasAll([
+            'userId', 'title', 'notes', 'dateEpochDay', 'startMinutes',
+            'endMinutes', 'colorHex', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'userId', 'title', 'notes', 'dateEpochDay', 'startMinutes',
+            'endMinutes', 'colorHex', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidEvent(incoming(), userId);
+        allow update: if isOwner(userId) &&
+          isValidId(eventId) &&
+          isValidEvent(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'notes', 'dateEpochDay', 'startMinutes',
+            'endMinutes', 'colorHex', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(eventId);
+      }
+
+      match /backup_history/{backupId} {
+        allow get: if isOwner(userId) && isValidId(backupId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidId(backupId) &&
+          incoming().keys().hasAll([
+            'userId', 'reminderCount', 'alarmCount', 'eventCount',
+            'status', 'deviceLabel', 'createdAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'userId', 'reminderCount', 'alarmCount', 'eventCount',
+            'status', 'deviceLabel', 'createdAt'
+          ]) &&
+          isValidBackupRecord(incoming(), userId);
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(backupId);
+      }
+    }
+  }
+}
